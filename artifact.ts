@@ -35,7 +35,7 @@ export async function artifact<
     carves:((a:A) => Promise<void>)[]
 }) {
     async function fn() {
-        const success = !await Deno.mkdir(lock).catch(() => 1)
+        const success = !await Deno.mkdir(lock, { recursive: true }).catch(() => 1)
         if (success) return
         try { for await (const _event of Deno.watchFs(lock)) break } catch (_) {0}
         return () => fn()
