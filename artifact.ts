@@ -25,8 +25,10 @@
 export async function artifact<A extends unknown>({
     lock, trigger, acquire, carves
 }:{
-    lock:string, trigger:() => Promise<boolean>, acquire:() => Promise<A>,
-    carves:((a:A) => Promise<void>)[]
+    lock:string,
+    trigger:(...p:unknown[]) => Promise<boolean>,
+    acquire:(...p:unknown[]) => Promise<A>,
+    carves:((a:A, ...p:unknown[]) => Promise<void>)[]
 }) {
     async function fn() {
         const success = !await Deno.mkdir(lock).catch(() => 1)
