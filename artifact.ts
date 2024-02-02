@@ -7,10 +7,10 @@
  *
  * @example
  * ```ts
- * import { artifact } from './mod.ts'
  * const lock = './foo.lock'
  * const trigger = async () => !await Deno.stat('foo.txt').catch(() => 0)
- * const acquire = async () => await new Promise<string>(r => setTimeout(() => r('fOoBaR'), 5000))
+ * const args = ['foobar']
+ * const acquire = async (...args:unknown[]) => await new Promise<string>(r => setTimeout(() => r(args[0] as string), 5000))
  * const write = async (s:string) => await Deno.writeTextFile('foo.txt', s.toUpperCase())
  * const carves = [write]
  * // the first time this is run by itself,
@@ -19,16 +19,20 @@
  * // if this was first called many times simultaneously,
  * // only one call would create the file after the delay,
  * // the rest would return immediately after the first call finishes  
- * await artifact({ lock, trigger, acquire, carves })
+ * await artifact({ lock, trigger, acquire, args, carves })
  * ```
  */
-export async function artifact<A extends unknown>({
-    lock, trigger, acquire, carves
+export async function artifact<
+    A extends unknown,
+    P extends unknown[]
+>({
+    lock, trigger, acquire, args, carves
 }:{
     lock:string,
-    trigger:(...p:unknown[]) => Promise<boolean>,
-    acquire:(...p:unknown[]) => Promise<A>,
-    carves:((a:A, ...p:unknown[]) => Promise<void>)[]
+    trigger:() => Promise<boolean>,
+    acquire:(...p:P) => Promise<A>,
+    args:P,
+    carves:((a:A) => Promise<void>)[]
 }) {
     async function fn() {
         const success = !await Deno.mkdir(lock).catch(() => 1)
@@ -39,7 +43,7 @@ export async function artifact<A extends unknown>({
     let thunk = await fn()
     while (typeof thunk == 'function') thunk = await thunk()
     if (await trigger()) {
-        const a = await acquire()
+        const a = await acquire(...args)
         const values = carves.map(carve => carve(a))
         await Promise.all(values)
     }
